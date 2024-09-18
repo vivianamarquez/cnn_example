@@ -1,5 +1,7 @@
 # Classifying "Mitchell vs Everyone Else" Using the CMU Face Dataset 
 
+Main Jupyter Notebook [here](https://github.com/vivianamarquez/cnn_example/blob/main/jupyter_notebooks/models/mitchell_everyone/detecting_mitchell.ipynb)
+
 ## BUSINESS GOALS
 This project showcases the potential for machine learning models to automate tasks such as facial recognition and classification in constrained environments. While current performance is high, further development with a more diverse dataset could lead to applications in security, personal identification, and human-computer interaction where distinguishing individuals in varied conditions is critical.
 
