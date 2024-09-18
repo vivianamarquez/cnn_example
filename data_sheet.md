@@ -7,6 +7,7 @@
   The dataset was created for facial image analysis and recognition tasks, including pose estimation, emotion recognition, and eye status classification.
 
 - Who created the dataset (e.g., which team, research group) and on behalf of which entity (e.g., company, institution, organization)? Who funded the creation of the dataset?
+
   The dataset was created by the Robotics Institute at Carnegie Mellon University (CMU). Specific funding information is not provided, but it likely comes from academic or research grants.
 
  
