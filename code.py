@@ -20,22 +20,18 @@ import torchvision.transforms as transforms
 import torchvision.transforms.functional as TF
 from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader, Dataset, random_split
+
 # Check for MPS (Apple Silicon), CUDA (for Nvidia GPUs), or fallback to CPU
-
-We're checking for different device options (MPS, CUDA, or CPU) to ensure that our PyTorch model runs on the most powerful hardware available. Running on a GPU (like CUDA or MPS) significantly speeds up computations, especially for tasks involving large datasets or deep learning models, by performing parallel processing. If no GPU is available, the code falls back to using the CPU, which is slower but still functional.
-
-On Mac, newer Apple Silicon chips (M1/M2) support GPU acceleration through Metal Performance Shaders (MPS), which we check for to optimize performance.
 if torch.backends.mps.is_available():
     device = torch.device('mps')  # Metal Performance Shaders for Mac
 elif torch.cuda.is_available():
     device = torch.device('cuda')  # CUDA for Nvidia GPUs (if available on Mac)
 else:
     device = torch.device('cpu')   # Fallback to CPU
-
 print(f'Using device: {device}')
+
 # Loading/Exploring our data
 
-We should resize the images to be 32x32 because the original LeNet-5 architecture expects input images of size 32x32, as it was originally designed for the MNIST dataset, where images have that specific resolution.
 # Dataset transformations
 transform = transforms.Compose([
     transforms.Grayscale(),  # Convert image to grayscale
@@ -43,10 +39,12 @@ transform = transforms.Compose([
     transforms.ToTensor(),  # Convert image to tensor
     transforms.Normalize((0.5,), (0.5,))  # Normalize
 ])
+
 # Load dataset
 data = ImageFolder(root='data/mitchell_vs_everyone', transform=transform)
 print(f"There are {len(data.classes)} classes.")
 print(data.classes)
+
 # Get all the labels (targets) from the dataset
 labels = [label for _, label in data]
 
@@ -57,39 +55,12 @@ label_counts = Counter(labels)
 class_names = data.classes
 counts = [label_counts[i] for i in range(len(class_names))]
 
-# Plot a bar chart
-plt.figure(figsize=(10, 6))
-plt.bar(class_names, counts)
-plt.xticks(rotation=90)  # Rotate x-axis labels if necessary
-plt.xlabel('Class')
-plt.ylabel('Number of Images')
-plt.title('Number of Images per Class')
-plt.show()
 # Calculate class weights (inverse of class frequencies)
 label_counts = Counter(labels)
 class_counts = [label_counts[i] for i in range(len(class_names))]
 total_samples = sum(class_counts)
 class_weights = [total_samples / count for count in class_counts]
-class_weights
-def visualize_random_images(dataset, num_images=5):
-    """
-    Visualizes a specified number of random images from the dataset and shows their labels.
-    """
-    fig, axes = plt.subplots(1, num_images, figsize=(15, 5))
 
-    indices = random.sample(range(len(dataset)), num_images)
-    for i, idx in enumerate(indices):
-        image, label = dataset[idx]
-        
-        image = image.numpy().transpose((1, 2, 0))
-        image = image * 0.5 + 0.5  # Unnormalize the image
-
-        axes[i].imshow(image, cmap='gray')
-        axes[i].set_title(f"Label: {dataset.classes[label]}")
-        axes[i].axis('off')
-
-    plt.show()
-visualize_random_images(data)
 # Train/Test/Val
 train_size = int(0.6 * len(data))
 val_size = int(0.2 * len(data))
@@ -98,14 +69,13 @@ test_size = len(data) - train_size - val_size
 train_data, val_data, test_data = random_split(data, [train_size, val_size, test_size])
 
 print(f"Training set: {len(train_data)}, Validation set: {len(val_data)}, Testing set: {len(test_data)}")
+
 # Data loaders
 train_loader = DataLoader(train_data, batch_size=64, shuffle=True)
 val_loader = DataLoader(val_data, batch_size=64, shuffle=False)
 test_loader = DataLoader(test_data, batch_size=64, shuffle=False)
 print(f'Number of batches per epoch: {len(train_loader)}')
-# Define the LeNet-5 architecture
 
-We switched the original 10 output features to 20 in the final fully connected layer because the number of output neurons must match the number of classes in your dataset. The original model had 10 output neurons, suitable for datasets like MNIST with 10 classes. Since your dataset has 2 classes (Mitchell vs Everyone), we need 2 output neurons.
 # Define the LeNet-5 architecture
 class LeNet5(nn.Module):
     def __init__(self):
@@ -160,26 +130,14 @@ criterion = nn.CrossEntropyLoss(weight=class_weights_tensor)
 # Optimizer (SGD is used in the original paper)
 # optimizer = optim.SGD(lenet5.parameters(), lr=0.001, momentum=0.9)
 optimizer = optim.Adam(lenet5.parameters(), lr=0.001)
+
 # Train the model
-# Load checkpoint if it exists
-checkpoint_path = 'checkpoint.pth'
-start_epoch = 0
-print(f'Number of batches per epoch: {len(train_loader)}')
-try:
-    checkpoint = torch.load(checkpoint_path, weights_only=True)
-    lenet5.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    start_epoch = checkpoint['epoch'] + 1  # Start from the next epoch
-    print(f"Resuming training from epoch {start_epoch}")
-except FileNotFoundError:
-    print("No checkpoint found, starting from scratch.")
-%%time
 num_epochs = 100 # Number of epochs
 early_stop_patience = 10  # Stop training if no improvement for this many epochs
 best_val_loss = float('inf')
 early_stop_counter = 0
 
-for epoch in range(start_epoch, num_epochs):
+for epoch in range(num_epochs):
     lenet5.train()  # Set the model to training mode
     running_loss = 0.0
     
@@ -197,32 +155,10 @@ for epoch in range(start_epoch, num_epochs):
         # Backward pass 
         loss.backward()
 
-        '''
-        # Monitoring Gradients
-        total_norm = 0
-        for name, param in lenet5.named_parameters():
-            if param.grad is not None:
-                param_norm = param.grad.data.norm(2)  # L2 norm of the gradients
-                total_norm += param_norm.item() ** 2
-                print(f'Layer: {name} | Gradient Norm: {param_norm.item():.6f}')
-        total_norm = total_norm ** 0.5
-        print(f'Total Gradient Norm: {total_norm:.6f}')
-        '''
-        
         # Optimize
         optimizer.step()
 
         running_loss += loss.item()
-
-    # Save the model checkpoint at the end of the epoch
-    checkpoint = {
-        'epoch': epoch,
-        'model_state_dict': lenet5.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'loss': running_loss / len(train_loader),
-    }
-
-    torch.save(checkpoint, checkpoint_path)
     
     # Validation step
     lenet5.eval()  # Set the model to evaluation mode
